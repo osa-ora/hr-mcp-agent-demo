@@ -168,7 +168,7 @@ agent = HRAgent(
 )
 ```
 
-if you called it without any configurations, the default will be loaded from .env file
+if you called it without any configurations, the defaults are resolved from environment variables via .env through config.py.
 ```
 from config import MODEL_NAME, DEBUG, MAX_STEPS, MCP_ENDPOINT
 
