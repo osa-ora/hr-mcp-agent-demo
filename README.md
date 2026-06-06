@@ -5,7 +5,7 @@ A demonstration project showing how to build an AI-powered HR assistant using a 
 
 The goal of this project is to illustrate how enterprise business systems can be exposed as AI tools (via a custom MCP server) and consumed by an agent capable of performing HR workflows through natural language interactions.
 
-This demonstrates the concept that:
+This demostrates the concept that:
 
 > **AI is the new UI for applications**
 
@@ -13,7 +13,10 @@ This demonstrates the concept that:
 
 ## Overview
 
-This demo consists of three main components:
+This demo consists of five main components:
+
+<img width="1536" height="1024" alt="ChatGPT Image Jun 6, 2026, 09_47_05 AM" src="https://github.com/user-attachments/assets/309d75fd-6b32-4554-8fae-68857a7204f9" />
+
 
 ### 1. HR Database
 
@@ -29,9 +32,49 @@ A PostgreSQL database containing HR-related information such as:
 * Compensation information
 * HR policies
 
+You can see tables like employees:
+```
+employees = Table(
+    "employees",
+    metadata,
+    # Business identity (PRIMARY KEY NOW)
+    Column("employee_code", String(50), primary_key=True),
+    Column("full_name", String(200), nullable=False),
+    Column("sex", String(20)),
+    Column("birthdate", Date),
+    Column("marital_status", String(50)),
+    Column("nationality", String(100)),
+    # Business relationship (no FK constraint by design)
+    Column("manager_code", String(50), nullable=True),
+    Column("created_at", DateTime),
+    Column("updated_at", DateTime)
+)
+```
+
+### 2. Database Service Layer
+
+This layer exposes the database functionality in the file db_service.py.
+It exposes the needed CRUD operations  for all tables transactions and enforce some rules as well:
+
+```
+def get_employee_profile(employee_identifier: str):
+    with engine.begin() as conn:
+        emp = _get_employee(conn, employee_identifier)
+        return dict(emp) if emp else None
+
+```
+
+The database is configured in the file db.py, you can update it to point to your database:
+
+```
+engine = create_engine(
+    "postgresql+psycopg2://postgres:postgres@localhost:5432/hrdb",
+    echo=False
+)
+```
 ---
 
-### 2. Custom MCP Server
+### 3. Custom HR MCP Server
 
 A custom MCP server built using FastMCP that exposes HR operations as tools.
 
@@ -46,11 +89,54 @@ Example capabilities include:
 * Policy search
 * Leave type discovery
 
+You can see function like:
+```
+import db_service as db
+
+@mcp.tool(
+    description="""
+ROLE: ANY EMPLOYEE
+
+Get basic employee profile using employee_identifier (employee_code or partial name).
+"""
+)
+def get_employee_profile(employee_identifier: str):
+    return db.get_employee_profile(employee_identifier)
+```
+That's very simple and easy way to build pluggable integration layer for AI that exposes your internal system functionality.
+Without MCP, the LLM would need custom integration code for every business system. MCP standardizes tool access, allowing any MCP-compatible client or agent to discover and invoke enterprise functionality through a common protocol.
+
+The good level of tool description is essential to let the LLM understand the use of that function very well and its input parameters and if there is any constraints like required role.
+
+You can change the mcp_server configurations especially if you plan to run many and need different ports for execution: 
+
+```
+if __name__ == "__main__":
+    print("REGISTERED TOOLS:", mcp.list_tools())
+    mcp.run(
+        transport="sse",
+        host="127.0.0.1",
+        port=8080
+    )
+```
+
+As you can see, we are using the SSE protocol, The SSE (Server-Sent Events) is a lightweight HTTP-based protocol that allows a server to continuously push real-time updates to a client over a single long-lived connection.
+
+This allow the client to send requests and receive responses without repeatedly opening new HTTP connections.
+
+SSE Key characteristics:
+
+- Built on standard HTTP
+- Simple to deploy and firewall-friendly
+- Supports streaming responses from server to client
+- Lightweight compared to WebSockets
+- Well-suited for MCP server communication and AI tool interactions
+
 The MCP server acts as a secure abstraction layer between the agent and the HR system.
 
 ---
 
-### 3. HR Agent
+### 4. HR Agent 
 
 A custom AI agent powered by a local LLM through Ollama.
 
@@ -63,13 +149,32 @@ The agent:
 * Maintains conversational context
 * Produces user-friendly responses
 
+This is a simple built agent, but you can still customize its configurations as following:
+
+```python
+agent = HRAgent(
+    AgentConfig(
+        debug=False,
+        max_steps=9,
+        mcp_endpoint="http://127.0.0.1:8000/sse",
+        model_name="llama3.1"
+    )
+)
+```
+
 Example requests:
 
 * "What is my leave balance for Osama Oransa?"
-* "Show my full profile?"
-* "ive me the policy that contains info about Hybrid work?"
+* "Show my full profile for EMP001?"
+* "Give me the policy that contains info about Hybrid work?"
 * "Show all my leave requests."
 * "Give me my basic salary and allowance"
+
+Alternatively, you can use any ChatClient and configure the model and the mcp server to convert it to HR Agent (as we well see in the following section).
+
+### 5. LLM Models
+
+In this demo, we used local Ollama models such as llama3.1.
 
 ---
 
@@ -88,7 +193,7 @@ Example requests:
 
 ## Learning Objectives
 
-This project demonstrates:
+This project demostrates:
 
 * Building custom MCP servers
 * Tool-based AI agents
@@ -203,29 +308,18 @@ You can test the agent using the provided notebook:
 test-agent.ipynb
 ```
 
-Run all cells and interact with the HR system.
-You can customzie the agent configurations as following:
-
-
-```python
-agent = HRAgent(
-    AgentConfig(
-        debug=False,
-        max_steps=9,
-        mcp_endpoint="http://127.0.0.1:8000/sse",
-        model_name="llama3.1"
-    )
-)
-```
+Run all cells and interact with the HR Agent the way you want.
 
 ---
 
 ## Using a Chat UI (Optional)
 
-You can also integrate the system with a chat interface such as Open WebUI or any MCP-compatible client.
+The other way is to integrate the system with a chat interface such as Open WebUI or any MCP-compatible client.
 
-- Add the rquired model: e.g. Ollama
+- Add the required model: e.g. Ollama
 - Add MCP_SERVER and name it as HR MCP_SERVER
+
+Here I am using ChatBox: https://github.com/chatboxai/chatbox
 
 <img width="1013" height="748" alt="Screenshot 2026-06-05 at 11 21 45 PM" src="https://github.com/user-attachments/assets/73cc0c46-d293-4f11-a38f-9a6bdf6cfb1c" />
 <img width="588" height="598" alt="Screenshot 2026-06-05 at 11 21 53 PM" src="https://github.com/user-attachments/assets/2ce138ac-2d6e-4841-825d-7e7f4b39d88e" />
