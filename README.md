@@ -64,11 +64,14 @@ def get_employee_profile(employee_identifier: str):
 
 ```
 
-The database is configured in the file db.py, you can update it to point to your database:
+The database is configured in the file db.py and it inherit the value from config file which get these values from .env file.
+You can update that file .env it to point to your database:
 
 ```
+from config import DATABASE_URL
+
 engine = create_engine(
-    "postgresql+psycopg2://postgres:postgres@localhost:5432/hrdb",
+    DATABASE_URL or "postgresql+psycopg2://postgres:postgres@localhost:5432/hrdb",
     echo=False
 )
 ```
@@ -108,15 +111,18 @@ Without MCP, the LLM would need custom integration code for every business syste
 
 The good level of tool description is essential to let the LLM understand the use of that function very well and its input parameters and if there is any constraints like required role.
 
-You can change the mcp_server configurations especially if you plan to run many and need different ports for execution: 
+You can change the mcp_server configurations especially if you plan to run many and need different ports for execution, to do this change the .env file: 
 
 ```
+from config import MCP_HOST, MCP_PORT, MCP_TRANSPORT
+
 if __name__ == "__main__":
     print("REGISTERED TOOLS:", mcp.list_tools())
+
     mcp.run(
-        transport="sse",
-        host="127.0.0.1",
-        port=8080
+        transport=MCP_TRANSPORT,
+        host=MCP_HOST,
+        port=MCP_PORT
     )
 ```
 
@@ -161,6 +167,18 @@ agent = HRAgent(
     )
 )
 ```
+
+if you called it without any configurations, the default will be loaded from .env file
+```
+from config import MODEL_NAME, DEBUG, MAX_STEPS, MCP_ENDPOINT
+
+class AgentConfig:
+    model_name: str = MODEL_NAME
+    debug: bool = DEBUG
+    max_steps: int = MAX_STEPS
+    mcp_endpoint: str = MCP_ENDPOINT
+```
+
 
 Example requests:
 
@@ -254,7 +272,7 @@ CREATE DATABASE hrdb;
 ### 4. Initialize database schema
 
 ```bash
-python ./init/init_db.py
+python init_db.py
 ```
 
 ---
@@ -262,7 +280,7 @@ python ./init/init_db.py
 ### 5. Seed test data
 
 ```bash
-python ./init/seed_init_data.py
+python seed_init_data.py
 ```
 
 ---
@@ -309,6 +327,18 @@ test-agent.ipynb
 ```
 
 Run all cells and interact with the HR Agent the way you want.
+
+<img width="1173" height="681" alt="Screenshot 2026-06-06 at 11 21 08 AM" src="https://github.com/user-attachments/assets/42f27d64-9ed0-472e-b6da-912ef6e2f33b" />
+
+Or you can run it directly from the command line: 
+
+```bash
+source .venv/bin/activate
+python3 hr_agent.py
+```
+
+<img width="1253" height="250" alt="Screenshot 2026-06-06 at 11 22 04 AM" src="https://github.com/user-attachments/assets/bb371168-22eb-496a-bd5d-603c9a7f3fe4" />
+
 
 ---
 
