@@ -57,9 +57,9 @@ This layer exposes the database functionality in the file db_service.py.
 It exposes the needed CRUD operations  for all tables transactions and enforce some rules as well:
 
 ```
-def get_employee_profile(employee_identifier: str):
+def get_employee_profile(employee_code: str):
     with engine.begin() as conn:
-        emp = _get_employee(conn, employee_identifier)
+        emp = _get_employee(conn, employee_code)
         return dict(emp) if emp else None
 
 ```
@@ -96,15 +96,18 @@ You can see function like:
 ```
 import db_service as db
 
+# =========================================================
+# EMPLOYEE PROFILE (ROLE: ANY EMPLOYEE)
+# =========================================================
 @mcp.tool(
     description="""
 ROLE: ANY EMPLOYEE
 
-Get basic employee profile using employee_identifier (employee_code or partial name).
+Get basic employee profile using employee_code
 """
 )
-def get_employee_profile(employee_identifier: str):
-    return db.get_employee_profile(employee_identifier)
+def get_employee_profile(employee_code: str):
+    return db.get_employee_profile(employee_code)
 ```
 That's very simple and easy way to build pluggable integration layer for AI that exposes your internal system functionality.
 Without MCP, the LLM would need custom integration code for every business system. MCP standardizes tool access, allowing any MCP-compatible client or agent to discover and invoke enterprise functionality through a common protocol.
@@ -144,7 +147,9 @@ The MCP server acts as a secure abstraction layer between the agent and the HR s
 
 ### 4. HR Agent 
 
-A custom AI agent powered by a local LLM through Ollama.
+We have 2 HR AGent: 
+First: A custom AI agent powered by a local LLM through Ollama named: "hr_agent.py"
+Second: A LangGrapgh agent also powered by a local LLM through Ollama named: "lang-graph-hr-agent"
 
 The agent:
 
@@ -158,6 +163,8 @@ The agent:
 This is a simple built agent, but you can still customize its configurations as following:
 
 ```python
+# For the Python agent:
+
 agent = HRAgent(
     AgentConfig(
         debug=False,
@@ -166,27 +173,29 @@ agent = HRAgent(
         model_name="llama3.1"
     )
 )
-```
 
-if you called it without any configurations, the defaults are resolved from environment variables via .env through config.py.
-```
+# if you called in of them without any configurations, the defaults are resolved from environment variables via .env file through config.py.
+
 from config import MODEL_NAME, DEBUG, MAX_STEPS, MCP_ENDPOINT
 
-class AgentConfig:
-    model_name: str = MODEL_NAME
-    debug: bool = DEBUG
-    max_steps: int = MAX_STEPS
-    mcp_endpoint: str = MCP_ENDPOINT
-```
+# for the LangGeaph agent:
 
+class Config:
+    model_name = "llama3.1"
+    mcp_url = "http://127.0.0.1:8000/sse"
+    debug = False
+    max_steps= = 5
+
+# And it also get these values from the .env file through config.py
+```
 
 Example requests:
 
 * "What is my leave balance for Osama Oransa?"
 * "Show my full profile for EMP001?"
-* "Give me the policy that contains info about Hybrid work?"
-* "Show all my leave requests."
-* "Give me my basic salary and allowance"
+* "Give me the policy for remote work?"
+* "Show all my leave requests for Osama Oransa."
+* "Give me my basic salary and allowance for EMP002"
 
 Alternatively, you can use any ChatClient and configure the model and the mcp server to convert it to HR Agent (as we well see in the following section).
 
@@ -215,6 +224,7 @@ This project demostrates:
 
 * Building custom MCP servers
 * Tool-based AI agents
+* LangGraph orchestration Agent
 * Enterprise system integration
 * Multi-step agent workflows
 * Database-backed AI applications
@@ -229,11 +239,8 @@ Potential extensions include:
 
 * Authentication and authorization
 * Role-based access control
-* LangGraph orchestration
 * Multi-agent workflows
-* RAG-enabled HR policy search
-* Open WebUI integration
-* Kubernetes / OpenShift deployment
+* RAG-enabled
 * Human approval and notifications workflows
 * Audit logging
 
@@ -333,12 +340,26 @@ Run all cells and interact with the HR Agent the way you want.
 Or you can run it directly from the command line: 
 
 ```bash
+
 source .venv/bin/activate
 python3 hr_agent.py
+
 ```
 
 <img width="1253" height="250" alt="Screenshot 2026-06-06 at 11 22 04 AM" src="https://github.com/user-attachments/assets/bb371168-22eb-496a-bd5d-603c9a7f3fe4" />
 
+Or you can run the LangGraph Agent directly from the command line: 
+
+```bash
+
+source .venv/bin/activate
+python3 lang-graph-hr-agent.py
+
+```
+
+<img width="1493" height="740" alt="Screenshot 2026-06-07 at 10 38 42 AM" src="https://github.com/user-attachments/assets/7305e746-a836-42f9-afbf-5771b8f3f8da" />
+
+You can sse the LangGraph agent is much more mature, and all these agents can be solid if it uses a better LLM model.
 
 ---
 
