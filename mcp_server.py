@@ -1,5 +1,6 @@
 from fastmcp import FastMCP
 import db_service as db
+from config import MCP_HOST, MCP_PORT, MCP_TRANSPORT
 from datetime import datetime
 
 mcp = FastMCP("hr-system")
@@ -12,11 +13,11 @@ mcp = FastMCP("hr-system")
     description="""
 ROLE: ANY EMPLOYEE
 
-Get basic employee profile using employee_identifier (employee_code or partial name).
+Get basic employee profile using employee_code
 """
 )
-def get_employee_profile(employee_identifier: str):
-    return db.get_employee_profile(employee_identifier)
+def get_employee_profile(employee_code: str):
+    return db.get_employee_profile(employee_code)
 
 
 # =========================================================
@@ -30,8 +31,8 @@ ROLE: ANY EMPLOYEE (self lookup) OR HR/ADMIN
 Get full employee profile including contacts, employment, balance, compensation.
 """
 )
-def get_employee_detailed_profile(employee_identifier: str):
-    return db.get_employee_detailed_profile(employee_identifier)
+def get_employee_detailed_profile(employee_code: str):
+    return db.get_employee_detailed_profile(employee_code)
 
 
 # =========================================================
@@ -45,8 +46,8 @@ ROLE: SYSTEM / HR ONLY
 Resolve employee name into employee code.
 """
 )
-def get_employee_code(employee_identifier: str):
-    return db.get_employee_code(employee_identifier)
+def get_employee_code(employee_name: str):
+    return db.get_employee_code(employee_name)
 
 
 # =========================================================
@@ -57,11 +58,11 @@ def get_employee_code(employee_identifier: str):
     description="""
 ROLE: ANY EMPLOYEE
 
-Get manager profile and contacts for an employee using employee_identifier.
+Get manager profile and contacts for an employee using employee_code.
 """
 )
-def get_employee_manager(employee_identifier: str):
-    return db.get_employee_manager(employee_identifier)
+def get_employee_manager(employee_code: str):
+    return db.get_employee_manager(employee_code)
 
 
 # =========================================================
@@ -72,12 +73,12 @@ def get_employee_manager(employee_identifier: str):
     description="""
 ROLE: ANY EMPLOYEE
 
-Check if employee manages other employees.
+Check if employee manages other employees using employee_code
 Returns boolean indicator.
 """
 )
-def is_a_manager(employee_identifier: str):
-    return db.is_a_manager(employee_identifier)
+def is_a_manager(employee_code: str):
+    return db.is_a_manager(employee_code)
 
 
 # =========================================================
@@ -88,11 +89,11 @@ def is_a_manager(employee_identifier: str):
     description="""
 ROLE: MANAGER ONLY OR HR
 
-Get all employees reporting to a manager using employee_identifier.
+Get all employees reporting to a manager using employee_code which is the manager_code.
 """
 )
-def get_all_managed_employees(employee_identifier: str):
-    return db.get_all_managed_employees(employee_identifier)
+def get_all_managed_employees(employee_code: str):
+    return db.get_all_managed_employees(employee_code)
 
 
 # =========================================================
@@ -111,33 +112,22 @@ def get_leave_balance(employee_code: str):
 
 
 # =========================================================
-# LEAVE REQUESTS (EMPLOYEE)
-# ROLE: SELF ONLY / HR
-# =========================================================
-@mcp.tool(
-    description="""
-ROLE: EMPLOYEE (self) OR HR
-
-Get all leave requests for an employee using employee_code.
-"""
-)
-def get_employee_leave_requests(employee_code: str):
-    return db.get_employee_leave_requests(employee_code)
-
-
-# =========================================================
-# FILTER LEAVE REQUESTS
+# Get LEAVE REQUESTS
 # ROLE: EMPLOYEE / HR
 # =========================================================
 @mcp.tool(
     description="""
 ROLE: EMPLOYEE / HR
 
-Filter leave requests by employee_code and leave_type_id.
+Get all leave requests using employee_code and optionally leave_type_id.
+If leave_type_id is omitted, return all leave requests for the employee.
 """
 )
-def filter_employee_leave_requests(employee_code: str, leave_type_id: int):
-    return db.filter_employee_leave_requests(employee_code, leave_type_id)
+def get_employee_leave_requests(
+    employee_code: str,
+    leave_type_id: int | None = None
+):
+    return db.get_employee_leave_requests(employee_code, leave_type_id)
 
 
 # =========================================================
@@ -233,7 +223,7 @@ def reject_leave_request(request_id: int, manager_code: str, manager_comment: st
     description="""
 ROLE: ANY EMPLOYEE
 
-Search HR policies using keyword.
+Search HR policies using keyword or policy name.
 """
 )
 def search_policies(keyword: str):
@@ -260,8 +250,9 @@ def get_leave_type(leave_type_id: int = None, type_name: str = None):
 # =========================================================
 if __name__ == "__main__":
     print("REGISTERED TOOLS:", mcp.list_tools())
+
     mcp.run(
-        transport="sse",
-        host="127.0.0.1",
-        port=8000
+        transport=MCP_TRANSPORT,
+        host=MCP_HOST,
+        port=MCP_PORT
     )

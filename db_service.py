@@ -1,8 +1,8 @@
-from sqlalchemy import create_engine, select, and_
+from sqlalchemy import create_engine, select, and_, or_, asc, desc
 from datetime import datetime, date, timezone
-from init.db import engine
+from db import engine
 
-from init.schema import (
+from schema import (
     employees,
     employee_contacts,
     employee_employment,
@@ -17,38 +17,65 @@ from init.schema import (
 # ==================================================
 # INTERNAL HELPER
 # ==================================================
-def _get_employee(conn, identifier: str):
+def _get_employee(conn, emp_code: str):
     emp = conn.execute(
         select(employees)
-        .where(employees.c.employee_code == identifier)
+        .where(employees.c.employee_code == emp_code)
     ).first()
-
-    if not emp:
-        emp = conn.execute(
-            select(employees)
-            .where(employees.c.full_name.ilike(f"%{identifier}%"))
-        ).first()
 
     return emp._mapping if emp else None
 
+# ==================================================
+# Get Employee Code from Name
+# ==================================================
+from sqlalchemy import select, or_
 
+def get_employee_code(employee_name: str):
+    with engine.begin() as conn:
+
+        # 1. FIRST: if input already looks like a code, verify it exists
+        row = conn.execute(
+            select(employees.c.employee_code)
+            .where(employees.c.employee_code == employee_name)
+        ).first()
+
+        if row:
+            return row._mapping["employee_code"]
+
+        # 2. SECOND: match by name (case-insensitive, partial allowed)
+        row = conn.execute(
+            select(employees.c.employee_code)
+            .where(employees.c.full_name.ilike(f"%{employee_name}%"))
+        ).first()
+
+        if row:
+            return row._mapping["employee_code"]
+
+        # 3. OPTIONAL: fallback (normalize spaces, safer matching)
+        normalized = " ".join(employee_name.strip().split())
+
+        row = conn.execute(
+            select(employees.c.employee_code)
+            .where(employees.c.full_name.ilike(f"%{normalized}%"))
+        ).first()
+
+        if not row:
+            return None
+
+        return row._mapping["employee_code"]
 # ==================================================
 # PROFILE
 # ==================================================
-def get_employee_profile(employee_identifier: str):
+def get_employee_profile(employee_code: str):
     with engine.begin() as conn:
-        emp = _get_employee(conn, employee_identifier)
+        emp = _get_employee(conn, employee_code)
         return dict(emp) if emp else None
 
-def get_employee_code(employee_identifier: str):
-    with engine.begin() as conn:
-        emp = _get_employee(conn, employee_identifier)
-        return emp["employee_code"] if emp else None
         
-def get_employee_detailed_profile(employee_identifier: str):
+def get_employee_detailed_profile(employee_code: str):
     with engine.begin() as conn:
 
-        emp = _get_employee(conn, employee_identifier)
+        emp = _get_employee(conn, employee_code)
         if not emp:
             return None
 
@@ -86,10 +113,10 @@ def get_employee_detailed_profile(employee_identifier: str):
 # ==================================================
 # MANAGER LOGIC
 # ==================================================
-def get_employee_manager(employee_identifier: str):
+def get_employee_manager(employee_code: str):
     with engine.begin() as conn:
 
-        emp = _get_employee(conn, employee_identifier)
+        emp = _get_employee(conn, employee_code)
         if not emp:
             return None
 
@@ -106,10 +133,10 @@ def get_employee_manager(employee_identifier: str):
         }
 
 
-def is_a_manager(employee_identifier: str):
+def is_a_manager(employee_code: str):
     with engine.begin() as conn:
 
-        emp = _get_employee(conn, employee_identifier)
+        emp = _get_employee(conn, employee_code)
         if not emp:
             return {"error": "Employee not found"}
 
@@ -128,10 +155,10 @@ def is_a_manager(employee_identifier: str):
         }
 
 
-def get_all_managed_employees(employee_identifier: str):
+def get_all_managed_employees(employee_code: str):
     with engine.begin() as conn:
 
-        emp = _get_employee(conn, employee_identifier)
+        emp = _get_employee(conn, employee_code)
         if not emp:
             return {"error": "Employee not found"}
 
@@ -153,15 +180,26 @@ def get_all_managed_employees(employee_identifier: str):
 # ==================================================
 # LEAVE REQUESTS
 # ==================================================
-def get_employee_leave_requests(employee_code: str):
+def get_employee_leave_requests(employee_code: str, leave_type_id: int | None = None):
     with engine.begin() as conn:
-        rows = conn.execute(
+
+        query = (
             select(leave_requests)
             .where(leave_requests.c.employee_code == employee_code)
-        ).fetchall()
+            .order_by(desc(leave_requests.c.created_at))
+            .limit(5)
+        )
+
+        if leave_type_id is not None:
+            query = query.where(
+                leave_requests.c.leave_type_id == leave_type_id
+            )
+
+        rows = conn.execute(query).fetchall()
+
         return [dict(r._mapping) for r in rows]
 
-
+# Get single leave request by ID
 def get_employee_leave_request(request_id: int):
     with engine.begin() as conn:
         row = conn.execute(
@@ -170,7 +208,7 @@ def get_employee_leave_request(request_id: int):
         ).first()
         return dict(row._mapping) if row else None
 
-
+# Get pending leave requests for a manager
 def get_pending_requests_for_manager(manager_code: str):
     with engine.begin() as conn:
 
@@ -186,6 +224,8 @@ def get_pending_requests_for_manager(manager_code: str):
                     leave_requests.c.status == "PENDING"
                 )
             )
+            .order_by(asc(leave_requests.c.created_at))  
+            .limit(5)
         ).fetchall()
 
         return [dict(r._mapping) for r in rows]
@@ -201,8 +241,7 @@ def get_leave_balance(employee_code: str):
             .where(employee_leave_balance.c.employee_code == employee_code)
         ).first()
         return dict(row._mapping) if row else None
-
-
+        
 # ==================================================
 # PERFORMANCE
 # ==================================================
@@ -229,20 +268,29 @@ def get_employee_compensation(employee_code: str):
             select(employee_compensation)
             .where(employee_compensation.c.employee_code == employee_code)
         ).first()
+        if not row:
+            raise ValueError("Employee code not found")
         return dict(row._mapping) if row else None
 
 
 # ==================================================
 # POLICIES
 # ==================================================
+
 def search_policies(keyword: str):
+    keyword = f"%{keyword}%"
+
     with engine.begin() as conn:
-        rows = conn.execute(select(policies)).fetchall()
-        return [
-            dict(r._mapping)
-            for r in rows
-            if keyword.lower() in (r.content or "").lower()
-        ]
+        stmt = select(policies).where(
+            or_(
+                policies.c.policy_name.ilike(keyword),
+                policies.c.content.ilike(keyword)
+            )
+        )
+
+        rows = conn.execute(stmt).fetchall()
+
+        return [dict(r._mapping) for r in rows]
 
 
 # ==================================================
@@ -330,8 +378,10 @@ def validate_leave_request_action(conn, request_id: int, manager_code: str):
         select(employees.c.manager_code)
         .where(employees.c.employee_code == req["employee_code"])
     ).first()
+    if not emp:
+        return {"error": "Employee not found"}
 
-    if not emp or emp._mapping["manager_code"] != manager_code:
+    if emp[0] != manager_code:
         return {"error": "Not authorized"}
 
     return req
@@ -379,7 +429,7 @@ def approve_leave_request(request_id: int, manager_code: str, comment: str = Non
             )
         )
 
-        return "APPROVED"
+        return {"status": "APPROVED", "request_id": request_id}
 
 
 # ==================================================
@@ -404,7 +454,7 @@ def reject_leave_request(request_id: int, manager_code: str, comment: str = None
             )
         )
 
-        return "REJECTED"
+        return {"status": "REJECTED", "request_id": request_id}
 
 
 # ==================================================
@@ -468,21 +518,3 @@ def get_leave_type(leave_type_id: int = None, type_name: str = None):
             return None
 
         return dict(row._mapping)
-
-
-# ==================================================
-# FILTER
-# ==================================================
-def filter_employee_leave_requests(employee_code: str, leave_type_id: int):
-    with engine.begin() as conn:
-        rows = conn.execute(
-            select(leave_requests)
-            .where(
-                and_(
-                    leave_requests.c.employee_code == employee_code,
-                    leave_requests.c.leave_type_id == leave_type_id
-                )
-            )
-        ).fetchall()
-
-        return [dict(r._mapping) for r in rows]

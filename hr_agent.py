@@ -7,6 +7,7 @@ import re
 from dataclasses import dataclass
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.sse import sse_client
+from config import MODEL_NAME, DEBUG, MAX_STEPS, MCP_ENDPOINT
 
 import httpx
 import time
@@ -16,18 +17,30 @@ import time
 # =========================================================
 @dataclass
 class AgentConfig:
-    model_name: str = "llama3.1"
-    debug: bool = False
-    max_steps: int = 9
-    mcp_endpoint: str = "http://127.0.0.1:8000/sse"
+    model_name: str = MODEL_NAME
+    debug: bool = DEBUG
+    max_steps: int = MAX_STEPS
+    mcp_endpoint: str = MCP_ENDPOINT
 
 # =========================================================
 # AGENT
 # =========================================================
 class HRAgent:
     def __init__(self, config: AgentConfig):
-        self.config = config
-    
+        
+        base = AgentConfig()
+
+        if config is None:
+            config = base
+
+        # field-by-field override
+        self.config = AgentConfig(
+            model_name=config.model_name if config.model_name is not None else base.model_name,
+            debug=config.debug if config.debug is not None else base.debug,
+            max_steps=config.max_steps if config.max_steps is not None else base.max_steps,
+            mcp_endpoint=config.mcp_endpoint if config.mcp_endpoint is not None else base.mcp_endpoint,
+        )
+        print(f"Will use HR MCP Server at: {self.config.mcp_endpoint}")    
         # session state only    
         self._session = None
         self._session_ctx = None
@@ -244,33 +257,31 @@ Otherwise:
    
 3. ALWAYS return valid JSON ONLY (no explanations, no markdown, no extra text, no dummy examples).
 
-4. If user provides employee name or EMPLOYEE_NUMBER:
-   - MUST call get_employee_profile FIRST using employee_identifier
+4. If user provides employee name:
+   - MUST call get_employee_code FIRST to get the employee_code
    - NO EXCEPTIONS
 
-5. NEVER pass employee_identifier into integer-only tools
-   - employee_identifier is STRING ONLY
-
-6. employee_code is STRING ONLY
+5. employee_code is STRING ONLY
    - If unknown, MUST be resolved via tool call (never guessed)
 
-7. manager_code is STRING ONLY
+6. manager_code is STRING ONLY
    - If unknown, MUST be resolved via tool call
    - It may be equivalent to employee_code only AFTER resolution via tools
 
-8. TOOL SEQUENCING RULE:
+7. TOOL SEQUENCING RULE:
    - Identity resolution tools MUST be called BEFORE any HR action tools
    - (approve_leave_request, reject_leave_request, balance queries, leave requests)
 
-9. NO TOOL INVENTION:
+8. NO TOOL INVENTION:
    - You may ONLY use tools listed in AVAILABLE TOOLS
    - Never assume or fabricate tool names
+9. If tool is search_policies, ALWAYS use "keyword" as the argument name.
 
 ---
 
 ### C) SAFE DEFAULT BEHAVIOR
 If uncertain:
-- call get_employee_profile first
+- call get_employee_code first
 - then refine using returned data
 
 ---
@@ -308,7 +319,7 @@ STRICT TOOL RULES:
 
 - You may ONLY use tools from AVAILABLE TOOLS list
 - Never invent tools
-- If unsure, use get_employee_profile first
+- If unsure, use get_employee_code first
 """
 
     # -----------------------------------------------------
@@ -464,15 +475,24 @@ if __name__ == "__main__":
 
     agent = HRAgent(
         AgentConfig(
-            model_name="llama3.1",
-            debug=True,
-            max_steps=9
+            model_name=MODEL_NAME,
+            debug=DEBUG,
+            max_steps=MAX_STEPS,
+            mcp_endpoint= MCP_ENDPOINT
         )
     )
+    print("HR Agent ready. Type 'exit' to quit.\n")
 
-    user_query = input("Ask HR Agent: ")
+    while True:
+        user_query = input("Ask HR Agent: ")
 
-    result = asyncio.run(agent.run(user_query))
+        if user_query.lower() in ["exit", "quit"]:
+            print("Bye.")
+            break
 
-    print("\n================ RESPONSE ================\n")
+        result = asyncio.run(agent.run(user_query))
+
+        print("\n================ RESPONSE ================\n")
+        print(result)
+    print("\n================ Good Bye ================\n")
     print(result)
