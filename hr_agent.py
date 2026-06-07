@@ -487,7 +487,6 @@ if __name__ == "__main__":
         user_query = input("Ask HR Agent: ")
 
         if user_query.lower() in ["exit", "quit"]:
-            print("Bye.")
             break
 
         result = asyncio.run(agent.run(user_query))
