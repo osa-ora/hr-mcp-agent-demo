@@ -495,4 +495,3 @@ if __name__ == "__main__":
         print("\n================ RESPONSE ================\n")
         print(result)
     print("\n================ Good Bye ================\n")
-    print(result)

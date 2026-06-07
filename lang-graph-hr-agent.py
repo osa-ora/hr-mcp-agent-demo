@@ -6,14 +6,25 @@ from typing import TypedDict, Optional, Any, Dict, List
 from langgraph.graph import StateGraph, END
 from langchain_ollama import ChatOllama
 from langchain_mcp_adapters.client import MultiServerMCPClient
+from config import MODEL_NAME, DEBUG, MAX_STEPS, MCP_ENDPOINT
 
 
 # =========================================================
 # CONFIG
 # =========================================================
 class Config:
-    model_name = "llama3.1"
-    mcp_url = "http://127.0.0.1:8000/sse"
+    model_name = MODEL_NAME
+    mcp_url = MCP_ENDPOINT
+    debug = DEBUG
+    max_steps = MAX_STEPS
+
+
+# -----------------------------------------------------
+# DEBUG HELPER
+# -----------------------------------------------------
+def debug(msg: str):
+    if Config.debug:
+        print(msg)
 
 
 # =========================================================
@@ -53,7 +64,7 @@ mcp_client = MultiServerMCPClient({
 # =========================================================
 async def init_tools():
     tools = await mcp_client.get_tools()
-    print(f"[INIT] Loaded {len(tools)} MCP tools")
+    debug(f"[INIT] Loaded {len(tools)} MCP tools")
     return tools
 
 
@@ -90,7 +101,7 @@ NAME_TO_CODE_CACHE = {}
 # STEP 1: PLANNER
 # =========================================================
 async def planner(state: HRState):
-    print("\n[STEP 1] Planning")
+    debug("\n[STEP 1] Planning")
 
     state["steps"] = state.get("steps", 0) + 1
     if "history" not in state or state["history"] is None:
@@ -136,7 +147,7 @@ User request:
             prompt += f"\nStep {idx+1}: Tool called: '{turn['tool']}' with parameters: {json.dumps(turn.get('arguments', {}))} -> Result context: {json.dumps(turn['result'])}"
 
     result = llm.invoke(prompt)
-    print("[RAW PLAN]", result.content)
+    debug(f"[RAW PLAN] {result.content}")
 
     try:
         plan = parse_json(result.content)
@@ -151,7 +162,7 @@ User request:
     visited = state["visited_tools"]
 
     if tool in visited and tool == state.get("last_tool") and tool != "FINAL":
-        print("[LOOP BREAK] duplicate tool execution cycle caught → forcing FINAL stop")
+        debug("[LOOP BREAK] duplicate tool execution cycle caught → forcing FINAL stop")
         plan = {"tool": "FINAL", "arguments": {}}
 
     if tool != "FINAL":
@@ -176,7 +187,7 @@ def normalize_args(tool_name, args, tools):
 # STEP 3: EXECUTION
 # =========================================================
 async def execute_tool(state: HRState):
-    print("\n[STEP 2] Tool execution")
+    debug("\n[STEP 2] Tool execution")
 
     tool_name = state["plan"]["tool"]
     args = state["plan"].get("arguments", {})
@@ -187,11 +198,11 @@ async def execute_tool(state: HRState):
         error_msg = f"Error: Tool '{tool_name}' does not exist. Choose from available tools list only."
         state["tool_result"] = {"error": error_msg}
         state["history"].append({"tool": tool_name, "arguments": args, "result": error_msg})
-        print("[TOOL RESULT]", state["tool_result"])
+        debug(f"[TOOL RESULT] {state['tool_result']}")
         return state
 
     args = normalize_args(tool_name, args, state["tools"])
-    print("[ARGS CLEAN]", args)
+    debug(f"[ARGS CLEAN] {args}")
 
     try:
         result = await tool.ainvoke(args)
@@ -213,7 +224,7 @@ async def execute_tool(state: HRState):
         state["tool_result"] = {"error": str(e)}
         state["history"].append({"tool": tool_name, "arguments": args, "result": f"Error: {str(e)}"})
 
-    print("[TOOL RESULT]", state["tool_result"])
+    debug(f"[TOOL RESULT] {state['tool_result']}")
     return state
 
 
@@ -224,7 +235,7 @@ def check_next_step(state: HRState):
     plan = state.get("plan", {})
     tool_name = plan.get("tool", "FINAL")
 
-    if tool_name == "FINAL" or state.get("steps", 0) >= 5:
+    if tool_name == "FINAL" or state.get("steps", 0) >= Config.max_steps:
         return "end"
     
     return "execute"
@@ -234,7 +245,7 @@ def check_next_step(state: HRState):
 # STEP 5: RESPONSE GENERATION
 # =========================================================
 def generate_response(state: HRState):
-    print("\n[STEP 3] Response")
+    debug("\n[STEP 3] Response")
 
     if state.get("history"):
         result = state["history"][-1]["result"]
@@ -310,6 +321,6 @@ async def main():
         print("\n================ OUTPUT ================\n")
         print(ans)
 
-
+    print("\n================ Good Bye ================\n")
 if __name__ == "__main__":
     asyncio.run(main())
