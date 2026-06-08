@@ -28,49 +28,41 @@ def debug(msg: str):
 
 
 # =========================================================
-# STATE
+# STATE DEFINITION (100% LangGraph Serializable)
 # =========================================================
 class HRState(TypedDict):
     user_input: str
     tools: List[Any]
+
+    # Pre-compiled tool schemas cached dynamically on step 1
+    tool_schemas: Optional[Dict[str, Any]]
 
     plan: Optional[Dict[str, Any]]
     tool_result: Optional[Any]
     final_answer: Optional[str]
 
     steps: int
-
     last_tool: Optional[str]
-    visited_tools: Optional[set]
+    visited_tools: List[str]
     history: List[Dict[str, Any]]
 
 
 # =========================================================
-# LLM
+# LLM & CLIENT INITIALIZATION
 # =========================================================
 llm = ChatOllama(model=Config.model_name, temperature=0, format="json")
 
-
-# =========================================================
-# MCP CLIENT
-# =========================================================
 mcp_client = MultiServerMCPClient({
     "hr": {"transport": "sse", "url": Config.mcp_url}
 })
 
 
-# =========================================================
-# INIT TOOLS
-# =========================================================
 async def init_tools():
     tools = await mcp_client.get_tools()
     debug(f"[INIT] Loaded {len(tools)} MCP tools")
     return tools
 
 
-# =========================================================
-# JSON PARSER
-# =========================================================
 def parse_json(text: str):
     try:
         return json.loads(text)
@@ -81,19 +73,6 @@ def parse_json(text: str):
         return json.loads(m.group())
 
 
-# =========================================================
-# TOOL SCHEMA EXTRACTOR
-# =========================================================
-def get_tool_schema(tools):
-    schema = {}
-    for t in tools:
-        schema[t.name] = getattr(t, "args_schema", None)
-    return schema
-
-
-# =========================================================
-# FIX MEMORY CACHE
-# =========================================================
 NAME_TO_CODE_CACHE = {}
 
 
@@ -101,22 +80,42 @@ NAME_TO_CODE_CACHE = {}
 # STEP 1: PLANNER
 # =========================================================
 async def planner(state: HRState):
-    debug("\n[STEP 1] Planning")
+    debug(f"\n[STEP 1] Planning (Turn {state.get('steps', 0) + 1})")
 
     state["steps"] = state.get("steps", 0) + 1
     if "history" not in state or state["history"] is None:
         state["history"] = []
 
-    tool_names = [t.name for t in state["tools"]]
-    tool_schema = get_tool_schema(state["tools"])
+    # --- SAFE DYNAMIC SCHEMA COMPILATION (Executes once) ---
+    if state.get("tool_schemas") is None:
+        tool_schemas = {}
+        for t in state["tools"]:
+            pydantic_schema = getattr(t, "args_schema", None)
+            json_schema = {}
+            
+            if pydantic_schema:
+                if isinstance(pydantic_schema, dict):
+                    json_schema = pydantic_schema
+                elif hasattr(pydantic_schema, "model_json_schema"):
+                    json_schema = pydantic_schema.model_json_schema()
+                elif hasattr(pydantic_schema, "schema"):
+                    json_schema = pydantic_schema.schema()
+
+            tool_schemas[t.name] = {
+                "description": t.description,
+                "parameters": json_schema
+            }
+        state["tool_schemas"] = tool_schemas
+
+    tool_names = list(state["tool_schemas"].keys())
 
     prompt = f"""You are an HR tool planner. Your only job is to select the next single tool or finish.
 
-Available tools:
+Available tool names:
 {tool_names}
 
-STRICT Tool argument schemas (Verify parameter names carefully):
-{tool_schema}
+STRICT Tool Schemas and Descriptions (Verify parameter names carefully):
+{json.dumps(state["tool_schemas"], indent=2)}
 
 CRITICAL EXECUTION RULES:
 1. Never try to get the profile twice
@@ -127,10 +126,6 @@ CRITICAL EXECUTION RULES:
 6. Never pass a raw dictionary or a nested function call string as an argument value.
 7. Omit optional arguments if you don't have their values. Do not pass null values.
 8. Do not repeat a tool execution if it has already returned valid data for your parameters.
-9. If an action requires an 'employee_code' or 'manager_code' and no specific name or code is specified in the prompt text, look up the target request context using history tools or ask for clarification. 
-10. NEVER invent or pass placeholder strings like "user provided name", "result of Step 1", or "leave request 25" as tool arguments. If you don't have a valid code, you must halt execution immediately.
-11. If a tool execution returns a valid list or structure containing data or explicitly empty results, do not re-run it or alter arguments to find combinations.
-12. Omit optional arguments if you don't have their values. Do not pass null values or invent arguments.
 
 OUTPUT FORMAT:
 - You must reply with a single valid JSON object containing "tool" and "arguments" keys.
@@ -140,7 +135,6 @@ User request:
 {state["user_input"]}
 """
 
-    # Inject the history into the single flat prompt structure Llama understands cleanly
     if state["history"]:
         prompt += "\n\nExecution History so far:"
         for idx, turn in enumerate(state["history"]):
@@ -155,18 +149,18 @@ User request:
         plan = {"tool": "FINAL", "arguments": {}}
 
     tool = plan.get("tool")
-    
+
     if state.get("visited_tools") is None:
-        state["visited_tools"] = set()
+        state["visited_tools"] = []
 
     visited = state["visited_tools"]
-
     if tool in visited and tool == state.get("last_tool") and tool != "FINAL":
         debug("[LOOP BREAK] duplicate tool execution cycle caught → forcing FINAL stop")
         plan = {"tool": "FINAL", "arguments": {}}
 
-    if tool != "FINAL":
-        visited.add(tool)
+    if tool != "FINAL" and tool in tool_names:
+        if tool not in visited:
+            visited.append(tool)
         state["last_tool"] = tool
 
     state["plan"] = plan
@@ -237,7 +231,7 @@ def check_next_step(state: HRState):
 
     if tool_name == "FINAL" or state.get("steps", 0) >= Config.max_steps:
         return "end"
-    
+        
     return "execute"
 
 
@@ -257,7 +251,7 @@ def generate_response(state: HRState):
 
 
 # =========================================================
-# GRAPH BUILDER
+# GRAPH BUILDER ASSEMBLY
 # =========================================================
 def build_graph():
     g = StateGraph(HRState)
@@ -284,7 +278,7 @@ def build_graph():
 
 
 # =========================================================
-# RUNNER
+# RUNNER ENTRY POINT
 # =========================================================
 async def run_agent(query: str, tools):
     graph = build_graph()
@@ -292,12 +286,13 @@ async def run_agent(query: str, tools):
     result = await graph.ainvoke({
         "user_input": query,
         "tools": tools,
+        "tool_schemas": None,
         "plan": None,
         "tool_result": None,
         "final_answer": None,
         "steps": 0,
         "last_tool": None,
-        "visited_tools": set(),
+        "visited_tools": [],
         "history": []
     })
 
@@ -305,7 +300,7 @@ async def run_agent(query: str, tools):
 
 
 # =========================================================
-# MAIN
+# MAIN TERMINAL LOOP
 # =========================================================
 async def main():
     tools = await init_tools()
@@ -317,10 +312,15 @@ async def main():
         if q.lower() in ["exit", "quit"]:
             break
 
+        if not q.strip():
+            continue
+
         ans = await run_agent(q, tools)
         print("\n================ OUTPUT ================\n")
         print(ans)
 
     print("\n================ Good Bye ================\n")
+
+
 if __name__ == "__main__":
     asyncio.run(main())

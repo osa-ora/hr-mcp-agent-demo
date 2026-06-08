@@ -3,13 +3,15 @@ import db_service as db
 from config import MCP_HOST, MCP_PORT, MCP_TRANSPORT
 from datetime import datetime
 
-mcp = FastMCP("hr-system")
+mcp = FastMCP("hr-system-v2")
 
 
 # =========================================================
-# EMPLOYEE PROFILE (ROLE: ANY EMPLOYEE)
+# EMPLOYEE PROFILE
+# SKILL: employee_profile
 # =========================================================
 @mcp.tool(
+    annotations={"skill": "employee_profile"},
     description="""
 ROLE: ANY EMPLOYEE
 
@@ -22,9 +24,10 @@ def get_employee_profile(employee_code: str):
 
 # =========================================================
 # EMPLOYEE PROFILE (DETAILED)
-# ROLE: ANY EMPLOYEE (self) OR HR/ADMIN
+# SKILL: employee_profile
 # =========================================================
 @mcp.tool(
+    annotations={"skill": "employee_profile"},
     description="""
 ROLE: ANY EMPLOYEE (self lookup) OR HR/ADMIN
 
@@ -36,10 +39,11 @@ def get_employee_detailed_profile(employee_code: str):
 
 
 # =========================================================
-# GET EMPLOYEE ID
-# ROLE: SYSTEM / INTERNAL / HR
+# GET EMPLOYEE CODE
+# SKILL: employee_profile
 # =========================================================
 @mcp.tool(
+    annotations={"skill": "employee_profile"},
     description="""
 ROLE: SYSTEM / HR ONLY
 
@@ -52,9 +56,10 @@ def get_employee_code(employee_name: str):
 
 # =========================================================
 # MANAGER INFO
-# ROLE: ANY EMPLOYEE (self lookup)
+# SKILL: employee_profile
 # =========================================================
 @mcp.tool(
+    annotations={"skill": "employee_profile"},
     description="""
 ROLE: ANY EMPLOYEE
 
@@ -66,14 +71,15 @@ def get_employee_manager(employee_code: str):
 
 
 # =========================================================
-# IS MANAGER CHECK
-# ROLE: ANY EMPLOYEE (informational)
+# ORG STRUCTURE
+# SKILL: employee_org
 # =========================================================
 @mcp.tool(
+    annotations={"skill": "employee_org"},
     description="""
 ROLE: ANY EMPLOYEE
 
-Check if employee manages other employees using employee_code
+Check if employee manages other employees using employee_code.
 Returns boolean indicator.
 """
 )
@@ -82,14 +88,15 @@ def is_a_manager(employee_code: str):
 
 
 # =========================================================
-# MANAGED EMPLOYEES LIST
-# ROLE: MANAGER ONLY (or HR)
+# ORG STRUCTURE
+# SKILL: employee_org
 # =========================================================
 @mcp.tool(
+    annotations={"skill": "employee_org"},
     description="""
 ROLE: MANAGER ONLY OR HR
 
-Get all employees reporting to a manager using employee_code which is the manager_code.
+Get all employees reporting to a manager using employee_code.
 """
 )
 def get_all_managed_employees(employee_code: str):
@@ -97,10 +104,11 @@ def get_all_managed_employees(employee_code: str):
 
 
 # =========================================================
-# LEAVE BALANCE
-# ROLE: ANY EMPLOYEE (self) OR MANAGER (direct reports) OR HR
+# LEAVE
+# SKILL: leave
 # =========================================================
 @mcp.tool(
+    annotations={"skill": "leave"},
     description="""
 ROLE: EMPLOYEE / MANAGER / HR
 
@@ -112,15 +120,15 @@ def get_leave_balance(employee_code: str):
 
 
 # =========================================================
-# Get LEAVE REQUESTS
-# ROLE: EMPLOYEE / HR
+# LEAVE
+# SKILL: leave
 # =========================================================
 @mcp.tool(
+    annotations={"skill": "leave"},
     description="""
 ROLE: EMPLOYEE / HR
 
 Get all leave requests using employee_code and optionally leave_type_id.
-If leave_type_id is omitted, return all leave requests for the employee.
 """
 )
 def get_employee_leave_requests(
@@ -131,14 +139,15 @@ def get_employee_leave_requests(
 
 
 # =========================================================
-# MANAGER PENDING REQUESTS
-# ROLE: MANAGER ONLY / HR
+# LEAVE
+# SKILL: leave
 # =========================================================
 @mcp.tool(
+    annotations={"skill": "leave"},
     description="""
 ROLE: MANAGER ONLY OR HR
 
-Get pending leave requests for direct reports using manager employee_code.
+Get pending leave requests for direct reports using manager_code.
 """
 )
 def get_pending_requests_for_manager(manager_code: str):
@@ -146,10 +155,11 @@ def get_pending_requests_for_manager(manager_code: str):
 
 
 # =========================================================
-# CREATE LEAVE REQUEST
-# ROLE: EMPLOYEE ONLY (self-service)
+# LEAVE
+# SKILL: leave
 # =========================================================
 @mcp.tool(
+    annotations={"skill": "leave"},
     description="""
 ROLE: EMPLOYEE ONLY
 
@@ -178,18 +188,12 @@ def create_leave_request(
     )
 
 
-def normalize_date(date_str: str):
-    try:
-        return datetime.strptime(date_str, "%Y-%m-%d").date()
-    except Exception:
-        raise ValueError("Invalid date format. Use YYYY-MM-DD")
-
-
 # =========================================================
-# APPROVE LEAVE REQUEST
-# ROLE: MANAGER ONLY / HR
+# LEAVE
+# SKILL: leave
 # =========================================================
 @mcp.tool(
+    annotations={"skill": "leave"},
     description="""
 ROLE: MANAGER ONLY OR HR
 
@@ -201,10 +205,11 @@ def approve_leave_request(request_id: int, manager_code: str, manager_comment: s
 
 
 # =========================================================
-# REJECT LEAVE REQUEST
-# ROLE: MANAGER ONLY / HR
+# LEAVE
+# SKILL: leave
 # =========================================================
 @mcp.tool(
+    annotations={"skill": "leave"},
     description="""
 ROLE: MANAGER ONLY OR HR
 
@@ -214,12 +219,30 @@ Reject a leave request using request_id and manager_code.
 def reject_leave_request(request_id: int, manager_code: str, manager_comment: str = None):
     return db.reject_leave_request(request_id, manager_code, manager_comment)
 
-
 # =========================================================
-# POLICY SEARCH
-# ROLE: ANY EMPLOYEE
+# LEAVE
+# SKILL: LEAVE
 # =========================================================
 @mcp.tool(
+    annotations={"skill": "leave"},
+    description="""
+ROLE: ANY EMPLOYEE
+
+Get leave type info using id or name.
+"""
+)
+def get_leave_type(leave_type_id: int = None, type_name: str = None):
+    return db.get_leave_type(
+        leave_type_id=leave_type_id,
+        type_name=type_name
+    )
+
+# =========================================================
+# POLICY
+# SKILL: policy
+# =========================================================
+@mcp.tool(
+    annotations={"skill": "policy"},
     description="""
 ROLE: ANY EMPLOYEE
 
@@ -229,20 +252,14 @@ Search HR policies using keyword or policy name.
 def search_policies(keyword: str):
     return db.search_policies(keyword)
 
-
 # =========================================================
-# LEAVE TYPE LOOKUP
-# ROLE: ANY EMPLOYEE
+# UTIL
 # =========================================================
-@mcp.tool(
-    description="""
-ROLE: ANY EMPLOYEE
-
-Get leave type info using id or name.
-"""
-)
-def get_leave_type(leave_type_id: int = None, type_name: str = None):
-    return db.get_leave_type(leave_type_id=leave_type_id, type_name=type_name)
+def normalize_date(date_str: str):
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").date()
+    except Exception:
+        raise ValueError("Invalid date format. Use YYYY-MM-DD")
 
 
 # =========================================================
