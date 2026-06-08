@@ -97,16 +97,18 @@ You can see function like:
 import db_service as db
 
 # =========================================================
-# EMPLOYEE PROFILE (ROLE: ANY EMPLOYEE)
+# EMPLOYEE PROFILE
+# SKILL: employee_profile
 # =========================================================
 @mcp.tool(
+    annotations={"skill": "employee_profile"},
     description="""
 ROLE: ANY EMPLOYEE
 
-Get basic employee profile using employee_code
+Get basic employee basic profile information using employee_code
 """
 )
-def get_employee_profile(employee_code: str):
+def get_employee_basic_profile(employee_code: str):
     return db.get_employee_profile(employee_code)
 ```
 That's very simple and easy way to build pluggable integration layer for AI that exposes your internal system functionality.
@@ -147,9 +149,12 @@ The MCP server acts as a secure abstraction layer between the agent and the HR s
 
 ### 4. HR Agent 
 
-We have 2 HR AGent: 
-First: A custom AI agent powered by a local LLM through Ollama named: "hr_agent.py"
-Second: A LangGrapgh agent also powered by a local LLM through Ollama named: "lang-graph-hr-agent"
+We have 3 HR Agents: 
+First: A custom AI agent powered by a local LLM through Ollama named: "hr_agent.py".
+
+Second: A LangGrapgh agent also powered by a local LLM through Ollama named: "lang-graph-hr-agent".
+
+Third: A LangGrapgh agent also powered by a local LLM through Ollama named: "lang-graph-hr-agent-v2", this one is skills-based, so it filters the needed skills and only sends the relevant skills to the LLM to use. 
 
 The agent:
 
@@ -178,7 +183,7 @@ agent = HRAgent(
 
 from config import MODEL_NAME, DEBUG, MAX_STEPS, MCP_ENDPOINT
 
-# for the LangGeaph agent:
+# for both LangGeaph agent(s):
 
 class Config:
     model_name = "llama3.1"
@@ -191,11 +196,11 @@ class Config:
 
 Example requests:
 
-* "What is my leave balance for Osama Oransa?"
+* "leave balance for Osama Oransa?"
 * "Show my full profile for EMP001?"
-* "Give me the policy for remote work?"
-* "Show all my leave requests for Osama Oransa."
-* "Give me my basic salary and allowance for EMP002"
+* "policy for remote work?"
+* "leave requests for Osama Oransa."
+* "basic profile for EMP002"
 
 Alternatively, you can use any ChatClient and configure the model and the mcp server to convert it to HR Agent (as we well see in the following section).
 
@@ -207,14 +212,7 @@ In this demo, we used local Ollama models such as llama3.1.
 
 ## Technologies Used
 
-* Python
-* FastMCP
-* MCP (Model Context Protocol)
-* Ollama
-* Llama 3.1
-* PostgreSQL
-* SQLAlchemy
-* AsyncIO
+* Python, FastMCP, MCP (Model Context Protocol), Ollama, Llama 3.1, PostgreSQL, SQLAlchemy, AsyncIO, Langgraph.
 
 ---
 
@@ -229,20 +227,7 @@ This project demostrates:
 * Multi-step agent workflows
 * Database-backed AI applications
 * Agent-to-tool orchestration
-* Natural language interfaces for business systems
-
----
-
-## Future Enhancements
-
-Potential extensions include:
-
-* Authentication and authorization
-* Role-based access control
-* Multi-agent workflows
-* RAG-enabled
-* Human approval and notifications workflows
-* Audit logging
+* Natural language interfaces for business systems.
 
 ---
 
@@ -359,7 +344,17 @@ python3 lang-graph-hr-agent.py
 
 <img width="1493" height="740" alt="Screenshot 2026-06-07 at 10 38 42 AM" src="https://github.com/user-attachments/assets/7305e746-a836-42f9-afbf-5771b8f3f8da" />
 
-You can sse the LangGraph agent is much more mature, and all these agents can be solid if it uses a better LLM model.
+You can then use the better quality agent that is skill based using:
+```bash
+
+source .venv/bin/activate
+python3 lang-graph-hr-agent-v2.py
+
+```
+<img width="1250" height="722" alt="Screenshot 2026-06-08 at 5 04 50 PM" src="https://github.com/user-attachments/assets/7ed577c0-b13f-43d6-8180-2ae7f4f5c61a" />
+
+
+You can see the LangGraph agent is much more mature, and all these agents can be solid if it uses a better LLM model.
 
 ---
 
