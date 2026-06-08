@@ -380,15 +380,6 @@ This allows a more natural chat-based experience instead of running the Python a
 
 ---
 
-## Notes
-
-* The MCP server is the core backend of this system.
-* The agent is a reference implementation for tool orchestration.
-* You can replace the agent layer with LangChain, LangGraph, or any MCP-compatible client.
-* The system is designed for experimentation and demos, not production.
-
----
-
 ## License
 
 This project is for educational and demonstration purposes only.
