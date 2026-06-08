@@ -225,7 +225,7 @@ def get_pending_requests_for_manager(manager_code: str):
                 )
             )
             .order_by(asc(leave_requests.c.created_at))  
-            .limit(5)
+            .limit(10)
         ).fetchall()
 
         return [dict(r._mapping) for r in rows]

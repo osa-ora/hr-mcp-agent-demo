@@ -15,10 +15,10 @@ mcp = FastMCP("hr-system-v2")
     description="""
 ROLE: ANY EMPLOYEE
 
-Get basic employee profile using employee_code
+Get basic employee basic profile information using employee_code
 """
 )
-def get_employee_profile(employee_code: str):
+def get_employee_basic_profile(employee_code: str):
     return db.get_employee_profile(employee_code)
 
 
@@ -31,7 +31,7 @@ def get_employee_profile(employee_code: str):
     description="""
 ROLE: ANY EMPLOYEE (self lookup) OR HR/ADMIN
 
-Get full employee profile including contacts, employment, balance, compensation.
+Get full employee profile information including contacts, employment, balance, compensation.
 """
 )
 def get_employee_detailed_profile(employee_code: str):
@@ -128,7 +128,7 @@ def get_leave_balance(employee_code: str):
     description="""
 ROLE: EMPLOYEE / HR
 
-Get all leave requests using employee_code and optionally leave_type_id.
+Get leave request or list of last leave requests using employee_code and optionally leave_type_id.
 """
 )
 def get_employee_leave_requests(
@@ -163,7 +163,7 @@ def get_pending_requests_for_manager(manager_code: str):
     description="""
 ROLE: EMPLOYEE ONLY
 
-Create a leave request using employee_code.
+Used to Create a leave request using employee_code and other essential informations like start and end dates, and leave type, etc..
 Dates must be YYYY-MM-DD.
 """
 )
