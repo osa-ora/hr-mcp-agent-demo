@@ -51,6 +51,11 @@ employees = Table(
 )
 ```
 
+Here is a simplified view of the sample HR DB:
+
+<img width="1536" height="1024" alt="hr_erd_diagram" src="https://github.com/user-attachments/assets/e811de46-bcb9-48ba-a43d-f0ea3fe8a758" />
+
+
 ### 2. Database Service Layer
 
 This layer exposes the database functionality in the file db_service.py.
@@ -79,7 +84,8 @@ engine = create_engine(
 
 ### 3. Custom HR MCP Server
 
-A custom MCP server built using FastMCP that exposes HR operations as tools.
+A custom MCP server built using FastMCP that exposes HR operations as tools, FastMCP is a Python framework for building and exposing tools through the Model Context Protocol (MCP). 
+It simplifies the creation of AI-accessible services by providing a lightweight way to define, register, and serve tools that can be discovered and invoked by MCP-compatible agents and clients.
 
 Example capabilities include:
 
@@ -150,11 +156,14 @@ The MCP server acts as a secure abstraction layer between the agent and the HR s
 ### 4. HR Agent 
 
 We have 3 HR Agents: 
-First: A custom AI agent powered by a local LLM through Ollama named: "hr_agent.py".
 
-Second: A LangGrapgh agent also powered by a local LLM through Ollama named: "lang-graph-hr-agent".
+#### First: A custom python AI agent powered by a local LLM through Ollama named: "hr_agent.py".
 
-Third: A LangGrapgh agent also powered by a local LLM through Ollama named: "lang-graph-hr-agent-v2", this one is skills-based, so it filters the needed skills and only sends the relevant skills to the LLM to use. 
+#### Second: A LangGraph agent also powered by a local LLM through Ollama named: "lang-graph-hr-agent.py".
+
+#### Third: A LangGraph agent also powered by a local LLM through Ollama named: "lang-graph-hr-agent-v2.py", this one is skills-based, so it filters the needed skills and only sends the relevant skills to the LLM to use. 
+
+LangGraph is a framework for building stateful, multi-step AI agents using graph-based workflows. It enables developers to model complex reasoning, planning, tool-calling, and decision-making processes as interconnected nodes, making agent execution more controllable, observable, and maintainable than traditional prompt chains.
 
 The agent:
 
@@ -168,7 +177,7 @@ The agent:
 This is a simple built agent, but you can still customize its configurations as following:
 
 ```python
-# For the Python agent:
+# For the custom Python agent:
 
 agent = HRAgent(
     AgentConfig(
@@ -183,7 +192,7 @@ agent = HRAgent(
 
 from config import MODEL_NAME, DEBUG, MAX_STEPS, MCP_ENDPOINT
 
-# for both LangGeaph agent(s):
+# for both LangGraph agent(s):
 
 class Config:
     model_name = "llama3.1"
@@ -197,6 +206,7 @@ class Config:
 Example requests:
 
 * "leave balance for Osama Oransa?"
+* "basic profile for Sara Ali"
 * "Show my full profile for EMP001?"
 * "policy for remote work?"
 * "leave requests for Osama Oransa."
@@ -212,7 +222,7 @@ In this demo, we used local Ollama models such as llama3.1.
 
 ## Technologies Used
 
-* Python, FastMCP, MCP (Model Context Protocol), Ollama, Llama 3.1, PostgreSQL, SQLAlchemy, AsyncIO, Langgraph.
+* Python, FastMCP, MCP (Model Context Protocol), Ollama, Llama 3.1, PostgreSQL, SQLAlchemy, AsyncIO, Langgraph and others.
 
 ---
 
@@ -253,7 +263,7 @@ source .venv/bin/activate
 
 ---
 
-### 3. Create PostgreSQL database
+### 3. Start PostgreSQL DB & Create 'hrdb' database
 
 ```sql
 CREATE DATABASE hrdb;
@@ -264,7 +274,7 @@ CREATE DATABASE hrdb;
 ### 4. Initialize database schema
 
 ```bash
-python init_db.py
+python3 init_db.py
 ```
 
 ---
@@ -272,7 +282,7 @@ python init_db.py
 ### 5. Seed test data
 
 ```bash
-python seed_init_data.py
+python3 seed_init_data.py
 ```
 
 ---
@@ -280,7 +290,7 @@ python seed_init_data.py
 ### 6. Run MCP server
 
 ```bash
-python mcp_server.py
+python3 mcp_server.py
 ```
 
 If successful, you will see:
@@ -344,7 +354,7 @@ python3 lang-graph-hr-agent.py
 
 <img width="1493" height="740" alt="Screenshot 2026-06-07 at 10 38 42 AM" src="https://github.com/user-attachments/assets/7305e746-a836-42f9-afbf-5771b8f3f8da" />
 
-You can then use the better quality agent that is skill based using:
+You can then use the better quality agent, that filter the mcp tools based on the needed skills to respond to customer specific request, using:
 ```bash
 
 source .venv/bin/activate
@@ -353,8 +363,9 @@ python3 lang-graph-hr-agent-v2.py
 ```
 <img width="1250" height="722" alt="Screenshot 2026-06-08 at 5 04 50 PM" src="https://github.com/user-attachments/assets/7ed577c0-b13f-43d6-8180-2ae7f4f5c61a" />
 
+You can see the LangGraph agent is much more mature and more accurate as it doesn't flood the LLM with all the tools. 
 
-You can see the LangGraph agent is much more mature, and all these agents can be solid if it uses a better LLM model.
+Note: The performance of all these agents can be solid if they use a better LLM.
 
 ---
 
@@ -365,7 +376,7 @@ The other way is to integrate the system with a chat interface such as Open WebU
 - Add the required model: e.g. Ollama
 - Add MCP_SERVER and name it as HR MCP_SERVER
 
-Here I am using ChatBox: https://github.com/chatboxai/chatbox
+Here I am using for example: ChatBox: https://github.com/chatboxai/chatbox
 
 <img width="1013" height="748" alt="Screenshot 2026-06-05 at 11 21 45 PM" src="https://github.com/user-attachments/assets/73cc0c46-d293-4f11-a38f-9a6bdf6cfb1c" />
 <img width="588" height="598" alt="Screenshot 2026-06-05 at 11 21 53 PM" src="https://github.com/user-attachments/assets/2ce138ac-2d6e-4841-825d-7e7f4b39d88e" />
