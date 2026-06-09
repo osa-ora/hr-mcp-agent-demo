@@ -155,17 +155,51 @@ The MCP server acts as a secure abstraction layer between the agent and the HR s
 
 ### 4. HR Agent 
 
-We have 3 HR Agents: 
+## HR Agent Examples
 
-#### First: A custom python AI agent powered by a local LLM through Ollama named: "hr_agent.py".
+We have built four HR agent examples:
 
-#### Second: A LangGraph agent also powered by a local LLM through Ollama named: "lang-graph-hr-agent.py".
+### First: Custom Python Agent
 
-#### Third: A LangGraph agent also powered by a local LLM through Ollama named: "lang-graph-hr-agent-v2.py", this one is skills-based, so it filters the needed skills and only sends the relevant skills to the LLM to use. 
+A custom Python AI agent powered by a local LLM through Ollama, named **`hr_agent.py`**.
 
-LangGraph is a framework for building stateful, multi-step AI agents using graph-based workflows. It enables developers to model complex reasoning, planning, tool-calling, and decision-making processes as interconnected nodes, making agent execution more controllable, observable, and maintainable than traditional prompt chains.
+### Second: Level-1 LangGraph Agent
 
-The agent:
+A Level-1 LangGraph agent, also powered by a local LLM through Ollama, named **`lang-graph-hr-agent.py`**. This version sends all MCP server tools to the LLM for planning and execution.
+
+**LangGraph** is a framework for building stateful, multi-step AI agents using graph-based workflows. It enables developers to model complex reasoning, planning, tool-calling, and decision-making processes as interconnected nodes, making agent execution more controllable, observable, and maintainable than traditional prompt chains.
+
+### Third: Level-2 LangGraph Agent
+
+A Level-2 LangGraph agent named **`lang-graph-hr-agent-v2.py`**. This version is skill-based, filtering MCP server tools by skill (virtual grouping) and sending only the relevant tool groups required by the LLM to complete the requested task.
+
+#### Skill-Based Tool Routing
+
+The agent uses a lightweight skill-selection layer to identify the minimum set of MCP tool categories required for a user request. By filtering available tools before planning, the agent reduces prompt size, improves tool-selection accuracy, and keeps reasoning focused on the relevant domain capabilities.
+
+### Fourth: Level-3 LangGraph Agent
+
+A Level-3 LangGraph agent named **`lang-graph-hr-agent-v3.py`**. This version builds on the skill-based architecture and externalizes prompts into dedicated template files.
+
+#### Prompt Externalization with Jinja2
+
+The agent uses Jinja2 templates to externalize all LLM prompts from the application code. This separates prompt engineering from business logic, making prompts easier to maintain, version, test, and update without modifying the agent implementation. Runtime context (such as user input, tool schemas, and execution history) is injected into templates to generate the final prompts sent to the model.
+
+For Example: response.jinja2 
+```
+You are a helpful HR Assistant.
+
+Answer the user's original request using the provided history of tool execution steps.
+Be concise, professional, and do not mention the technical tool names.
+
+User Request: {{ user_input }}
+
+Execution History Data:
+{{ history }}
+```
+And we seed these placeholders with the corresponding values for the agent.
+
+The agent main functions:
 
 * Understands user requests
 * Discovers available MCP tools
@@ -174,7 +208,7 @@ The agent:
 * Maintains conversational context
 * Produces user-friendly responses
 
-This is a simple built agent, but you can still customize its configurations as following:
+You can still customize agent(s) configurations as following:
 
 ```python
 # For the custom Python agent:
@@ -363,9 +397,16 @@ python3 lang-graph-hr-agent-v2.py
 ```
 <img width="1250" height="722" alt="Screenshot 2026-06-08 at 5 04 50 PM" src="https://github.com/user-attachments/assets/7ed577c0-b13f-43d6-8180-2ae7f4f5c61a" />
 
-You can see the LangGraph agent is much more mature and more accurate as it doesn't flood the LLM with all the tools. 
+Finally, the more dynamic agent, that filter the mcp tools and load the prompt from templates, using:
+```bash
 
-Note: The performance of all these agents can be solid if they use a better LLM.
+source .venv/bin/activate
+python3 lang-graph-hr-agent-v3.py
+```
+
+You can see the LangGraph agent is much more mature and more accurate. 
+
+Note: The performance of all these agents can be more solid if they use a better and strong LLM.
 
 ---
 
