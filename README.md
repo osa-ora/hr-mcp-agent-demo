@@ -185,6 +185,10 @@ A Level-3 LangGraph agent named **`lang-graph-hr-agent-v3.py`**. This version bu
 
 The agent uses Jinja2 templates to externalize all LLM prompts from the application code. This separates prompt engineering from business logic, making prompts easier to maintain, version, test, and update without modifying the agent implementation. Runtime context (such as user input, tool schemas, and execution history) is injected into templates to generate the final prompts sent to the model.
 
+Jinja is a fast, expressive, extensible templating engine. Special placeholders in the template allow writing code similar to Python syntax. Then the template is passed data to render the final document, e.g. {{ variable }} place holders, while {% %} is control flow syntax.
+Read more: https://jinja.palletsprojects.com/en/stable/
+
+
 For Example: response.jinja2 
 ```
 You are a helpful HR Assistant.
