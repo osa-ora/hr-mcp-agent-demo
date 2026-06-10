@@ -2,8 +2,16 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-
+DATABASE_USER = os.getenv("DATABASE_USER", "postgres")
+DATABASE_PASSWORD = os.getenv("DATABASE_PASSWORD", "postgres")
+DATABASE_HOST = os.getenv("DATABASE_HOST", "localhost")
+DATABASE_PORT = os.getenv("DATABASE_PORT", "5432")
+DATABASE_NAME = os.getenv("DATABASE_NAME", "hrdb")
+DATABASE_URL = (
+    f"postgresql+psycopg2://"
+    f"{DATABASE_USER}:{DATABASE_PASSWORD}"
+    f"@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}"
+)
 MODEL_NAME = os.getenv("MODEL_NAME", "llama3.1")
 MAX_STEPS = int(os.getenv("MAX_STEPS", "9"))
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
