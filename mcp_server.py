@@ -1,10 +1,17 @@
 from fastmcp import FastMCP
 import db_service as db
-from config import MCP_HOST, MCP_PORT, MCP_TRANSPORT
+from config import MCP_HOST, MCP_PORT, MCP_TRANSPORT, DEBUG
 from datetime import datetime
+import logging
 
 mcp = FastMCP("hr-system-v2")
 
+# -----------------------------------------------------
+# DEBUG HELPER
+# -----------------------------------------------------
+def debug(msg: str):
+    if DEBUG:
+        print("DEBUG:" + msg)
 
 # =========================================================
 # EMPLOYEE PROFILE
@@ -19,6 +26,7 @@ Get basic employee basic profile information using employee_code
 """
 )
 def get_employee_basic_profile(employee_code: str):
+    debug(f"Invoke get_employee_basic_profile {employee_code}.")
     return db.get_employee_profile(employee_code)
 
 
@@ -35,6 +43,7 @@ Get full employee profile information including contacts, employment, balance, c
 """
 )
 def get_employee_detailed_profile(employee_code: str):
+    debug(f"Invoke get_employee_detailed_profile {employee_code}.")
     return db.get_employee_detailed_profile(employee_code)
 
 
@@ -51,6 +60,7 @@ Resolve employee name into employee code.
 """
 )
 def get_employee_code(employee_name: str):
+    debug(f"Invoke get_employee_code {employee_name}.")
     return db.get_employee_code(employee_name)
 
 
@@ -67,6 +77,7 @@ Get manager profile and contacts for an employee using employee_code.
 """
 )
 def get_employee_manager(employee_code: str):
+    debug(f"Invoke get_employee_manager {employee_code}.")
     return db.get_employee_manager(employee_code)
 
 
@@ -84,6 +95,7 @@ Returns boolean indicator.
 """
 )
 def is_a_manager(employee_code: str):
+    debug(f"Invoke is_a_manager {employee_code}.")
     return db.is_a_manager(employee_code)
 
 
@@ -100,6 +112,7 @@ Get all employees reporting to a manager using employee_code.
 """
 )
 def get_all_managed_employees(employee_code: str):
+    debug(f"Invoke get_all_managed_employees {employee_code}.")
     return db.get_all_managed_employees(employee_code)
 
 
@@ -116,6 +129,7 @@ Get leave balance for an employee using employee_code.
 """
 )
 def get_leave_balance(employee_code: str):
+    debug(f"Invoke get_leave_balance {employee_code}.")
     return db.get_leave_balance(employee_code)
 
 
@@ -135,6 +149,7 @@ def get_employee_leave_requests(
     employee_code: str,
     leave_type_id: int | None = None
 ):
+    debug(f"Invoke get_employee_leave_requests {employee_code}, leave type id {leave_type_id}")
     return db.get_employee_leave_requests(employee_code, leave_type_id)
 
 
@@ -151,6 +166,7 @@ Get pending leave requests for direct reports using manager_code.
 """
 )
 def get_pending_requests_for_manager(manager_code: str):
+    debug(f"Invoke get_pending_requests_for_manager {manager_code}.")
     return db.get_pending_requests_for_manager(manager_code)
 
 
@@ -177,6 +193,8 @@ def create_leave_request(
 ):
     start_date = normalize_date(start_date)
     end_date = normalize_date(end_date)
+    
+    debug(f"Invoke create_leave_request {employee_code}.")
 
     return db.create_leave_request(
         employee_code,
@@ -201,6 +219,7 @@ Approve a leave request using request_id and manager_code.
 """
 )
 def approve_leave_request(request_id: int, manager_code: str, manager_comment: str = None):
+    debug(f"Invoke approve_leave_request by {manager_code}.")
     return db.approve_leave_request(request_id, manager_code, manager_comment)
 
 
@@ -217,6 +236,7 @@ Reject a leave request using request_id and manager_code.
 """
 )
 def reject_leave_request(request_id: int, manager_code: str, manager_comment: str = None):
+    debug(f"Invoke reject_leave_request by {manager_code}.")
     return db.reject_leave_request(request_id, manager_code, manager_comment)
 
 # =========================================================
@@ -232,6 +252,7 @@ Get leave type info using id or name.
 """
 )
 def get_leave_type(leave_type_id: int = None, type_name: str = None):
+    debug(f"Invoke get_leave_type for Id: {leave_type_id}, Name: {type_name}.")
     return db.get_leave_type(
         leave_type_id=leave_type_id,
         type_name=type_name
@@ -250,6 +271,7 @@ Search HR policies using keyword or policy name.
 """
 )
 def search_policies(keyword: str):
+    debug(f"Invoke search_policies for {keyword}.")
     return db.search_policies(keyword)
 
 # =========================================================
@@ -267,6 +289,7 @@ def normalize_date(date_str: str):
 # =========================================================
 if __name__ == "__main__":
     print("REGISTERED TOOLS:", mcp.list_tools())
+    print("Debug is set:", DEBUG)
 
     mcp.run(
         transport=MCP_TRANSPORT,

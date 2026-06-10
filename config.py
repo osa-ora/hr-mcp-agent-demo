@@ -14,6 +14,7 @@ DATABASE_URL = (
 )
 MODEL_NAME = os.getenv("MODEL_NAME", "llama3.1")
 MAX_STEPS = int(os.getenv("MAX_STEPS", "9"))
+#DEBUG = True
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
 MCP_SCHEME = os.getenv("MCP_SCHEME", "http")
