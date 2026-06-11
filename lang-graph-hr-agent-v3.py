@@ -6,7 +6,7 @@ from typing import TypedDict, Optional, Any, Dict, List
 from langgraph.graph import StateGraph, END
 from langchain_ollama import ChatOllama
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from config import MODEL_NAME, DEBUG, MAX_STEPS, MCP_ENDPOINT
+from config import MODEL_NAME, DEBUG, MAX_STEPS, MCP_ENDPOINT, MCP_SCHEME
 from jinja2 import Template
 
 
@@ -75,7 +75,7 @@ class HRState(TypedDict):
 llm = ChatOllama(model=Config.model_name, temperature=0, format="json")
 
 mcp_client = MultiServerMCPClient({
-    "hr": {"transport": "sse", "url": Config.mcp_url}
+    "hr": {"transport": MCP_SCHEME, "url": Config.mcp_url}
 })
 
 

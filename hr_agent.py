@@ -6,8 +6,10 @@ import re
 
 from dataclasses import dataclass
 from mcp import ClientSession, StdioServerParameters
-from mcp.client.sse import sse_client
-from config import MODEL_NAME, DEBUG, MAX_STEPS, MCP_ENDPOINT
+#from mcp.client.sse import sse_client
+#Switch to HTTP instead of SSE
+from mcp.client.streamable_http import streamablehttp_client
+from config import MODEL_NAME, DEBUG, MAX_STEPS, MCP_ENDPOINT, MCP_SCHEME
 
 import httpx
 import time
@@ -338,8 +340,15 @@ STRICT TOOL RULES:
             # ❌ REMOVED: storing async context manager breaks reuse + causes
             # generator teardown errors in anyio when failures happen
     
-            async with sse_client(self.config.mcp_endpoint) as (read, write):
+            async with streamablehttp_client(self.config.mcp_endpoint) as streams:
+
+                read = streams[0]
+                write = streams[1]
+            
                 async with ClientSession(read, write) as session:
+            #switch to http instead of sse
+            #async with sse_client(self.config.mcp_endpoint) as (read, write):
+                #async with ClientSession(read, write) as session:
     
                     self._session = session
     
