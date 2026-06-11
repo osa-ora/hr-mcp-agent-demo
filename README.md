@@ -137,17 +137,7 @@ if __name__ == "__main__":
     )
 ```
 
-As you can see, we are using the SSE protocol, The SSE (Server-Sent Events) is a lightweight HTTP-based protocol that allows a server to continuously push real-time updates to a client over a single long-lived connection.
-
-This allow the client to send requests and receive responses without repeatedly opening new HTTP connections.
-
-SSE Key characteristics:
-
-- Built on standard HTTP
-- Simple to deploy and firewall-friendly
-- Supports streaming responses from server to client
-- Lightweight compared to WebSockets
-- Well-suited for MCP server communication and AI tool interactions
+We used initially SSE protocol but then switched to HTTP, The SSE (Server-Sent Events) is a lightweight HTTP-based protocol that allows a server to continuously push real-time updates to a client over a single long-lived connection, it becomes a legacy now and most of the modern mcp are using http (or streamable_http).
 
 The MCP server acts as a secure abstraction layer between the agent and the HR system.
 
@@ -221,7 +211,7 @@ agent = HRAgent(
     AgentConfig(
         debug=False,
         max_steps=9,
-        mcp_endpoint="http://127.0.0.1:8000/sse",
+        mcp_endpoint="http://127.0.0.1:8000/mcp",
         model_name="llama3.1"
     )
 )
@@ -234,7 +224,7 @@ from config import MODEL_NAME, DEBUG, MAX_STEPS, MCP_ENDPOINT
 
 class Config:
     model_name = "llama3.1"
-    mcp_url = "http://127.0.0.1:8000/sse"
+    mcp_url = "http://127.0.0.1:8000/mcp"
     debug = False
     max_steps= = 5
 
@@ -298,6 +288,8 @@ This will create a Python 3.12 virtual environment and install all required depe
 ```bash
 source .venv/bin/activate
 ```
+Then edit the .env file for any changes you need to do.<img width="1244" height="648" alt="Screenshot 2026-06-11 at 7 04 37 AM" src="https://github.com/user-attachments/assets/98cee584-46ca-49b8-8c12-22858bb85d51" />
+
 
 ---
 
@@ -334,14 +326,15 @@ python3 mcp_server.py
 If successful, you will see:
 
 ```
-Starting MCP server 'hr-system' with transport 'sse' on http://127.0.0.1:8000/sse
+Starting MCP server 'hr-system-v2' with transport 'http' on transport.py:304 http://0.0.0.0:8000/mcp
 ```
 
 ---
 
 ### MCP Server Screenshot
 
-<img width="1251" height="577" alt="MCP Server Screenshot" src="https://github.com/user-attachments/assets/39420ef3-e76d-4df2-8698-b1bf7814d8a3" />
+<img width="1247" height="657" alt="Screenshot 2026-06-11 at 7 05 07 AM" src="https://github.com/user-attachments/assets/f875de39-2905-4571-abf8-8593b1435e49" />
+
 
 ---
 
@@ -368,7 +361,8 @@ test-agent.ipynb
 
 Run all cells and interact with the HR Agent the way you want.
 
-<img width="1173" height="681" alt="Screenshot 2026-06-06 at 11 21 08 AM" src="https://github.com/user-attachments/assets/42f27d64-9ed0-472e-b6da-912ef6e2f33b" />
+<img width="1091" height="676" alt="Screenshot 2026-06-11 at 7 08 33 AM" src="https://github.com/user-attachments/assets/94757f11-b500-40a0-a8ef-b2e473b70f83" />
+
 
 Or you can run it directly from the command line: 
 
@@ -425,7 +419,9 @@ Here I am using for example: ChatBox: https://github.com/chatboxai/chatbox
 
 <img width="1013" height="748" alt="Screenshot 2026-06-05 at 11 21 45 PM" src="https://github.com/user-attachments/assets/73cc0c46-d293-4f11-a38f-9a6bdf6cfb1c" />
 <img width="588" height="598" alt="Screenshot 2026-06-05 at 11 21 53 PM" src="https://github.com/user-attachments/assets/2ce138ac-2d6e-4841-825d-7e7f4b39d88e" />
-<img width="608" height="662" alt="Screenshot 2026-06-05 at 11 22 15 PM" src="https://github.com/user-attachments/assets/c4801341-0675-4fb3-b8fb-fe48da36d567" />
+
+<img width="761" height="674" alt="Screenshot 2026-06-11 at 7 10 08 AM" src="https://github.com/user-attachments/assets/7356d14f-f09d-43ef-a9ea-1566dc87a1f7" />
+
 
 This allows a more natural chat-based experience instead of running the Python agent directly.
 
