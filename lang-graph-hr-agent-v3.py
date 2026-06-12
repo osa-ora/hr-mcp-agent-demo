@@ -364,12 +364,12 @@ def build_graph():
 
     return g.compile()
 
+graph = build_graph()
 
 # =========================================================
 # RUNNER
 # =========================================================
 async def run_agent(query: str):
-    graph = build_graph()
 
     result = await graph.ainvoke({
         "user_input": query,

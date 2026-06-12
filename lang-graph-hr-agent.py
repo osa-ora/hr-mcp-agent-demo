@@ -276,12 +276,12 @@ def build_graph():
 
     return g.compile()
 
+graph = build_graph()
 
 # =========================================================
 # RUNNER ENTRY POINT
 # =========================================================
 async def run_agent(query: str, tools):
-    graph = build_graph()
 
     result = await graph.ainvoke({
         "user_input": query,
