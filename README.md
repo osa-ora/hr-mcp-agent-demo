@@ -406,6 +406,9 @@ You can see the LangGraph agent is much more mature and more accurate.
 
 Note: The performance of all these agents can be more solid if they use a better and strong LLM.
 
+Note: To check the optimal agent, with multiple dynamic MCP Server discovery, check the following repository: https://github.com/osa-ora/ocp-ai-mcp-client-demo
+
+
 ---
 
 ## Using a Chat UI (Optional)
