@@ -10,7 +10,7 @@ mcp = FastMCP("hr-system-v2")
 # ----------------------------
 # APPLICATION HEALTH CHECK
 # ----------------------------
-@app.get("/health")
+@mcp.get("/health")
 async def health():
     return {
         "status": "up",
